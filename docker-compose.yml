@@ -16,8 +16,15 @@ services:
       - BANK_CODE
       - DB_NAME=/app/sql3lite/sales.db
     volumes:
-      - report:/app/report  # đồng bộ folder report ra host
-      - sqlite3:/app/sqlite3      # mount folder to store sqlite DB
-      - bot.log:/app/bot.log   # optional log file on host
+      - report-data:/app/report  # đồng bộ folder report ra host
+      - sqlite3-data:/app/sqlite3      # mount folder to store sqlite DB
     network_mode: "bridge"
+volumes:
+  report-data:
+  sqlite3-data:
+logging:
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "3"
 
