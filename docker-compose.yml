@@ -19,12 +19,13 @@ services:
       - report-data:/app/report  # đồng bộ folder report ra host
       - sqlite3-data:/app/sqlite3      # mount folder to store sqlite DB
     network_mode: "bridge"
+    logging:
+       driver: "json-file"
+       options:
+         max-size: "10m"
+         max-file: "3"
 volumes:
   report-data:
   sqlite3-data:
-logging:
-  driver: "json-file"
-  options:
-    max-size: "10m"
-    max-file: "3"
+
 
