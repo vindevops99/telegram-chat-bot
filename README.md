@@ -2,6 +2,17 @@
 
 Một bot Telegram giúp theo dõi chi tiêu và quản lý hóa đơn, được phát triển bằng Python.
 
+## Demo
+
+https://files.catbox.moe/03d545.mp4
+
+Video demo trên cho thấy các tính năng chính của bot:
+- Khởi động và menu chính
+- Quy trình nhập hóa đơn mới
+- Tạo báo cáo chi tiêu
+- Xuất file CSV
+- Tạo mã QR thanh toán
+
 ## Tính năng
 
 - 📝 Ghi lại hóa đơn và chi tiêu
