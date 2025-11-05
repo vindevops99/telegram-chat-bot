@@ -4,7 +4,7 @@ Một bot Telegram giúp theo dõi chi tiêu và quản lý hóa đơn, được
 
 ## Demo
 
-https://files.catbox.moe/03d545.mp4
+🎥 [Xem video demo tính năng của Telegram Chat Bot →](https://files.catbox.moe/03d545.mp4)
 
 Video demo trên cho thấy các tính năng chính của bot:
 - Khởi động và menu chính
