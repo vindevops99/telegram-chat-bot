@@ -16,8 +16,8 @@ services:
       - BANK_CODE
       - DB_NAME=/app/sql3lite/sales.db
     volumes:
-      - ./report:/app/report  # đồng bộ folder report ra host
-      - ./sqlite3:/app/sqlite3      # mount folder to store sqlite DB
-      - ./bot.log:/app/bot.log   # optional log file on host
+      - report:/app/report  # đồng bộ folder report ra host
+      - sqlite3:/app/sqlite3      # mount folder to store sqlite DB
+      - bot.log:/app/bot.log   # optional log file on host
     network_mode: "bridge"
 
