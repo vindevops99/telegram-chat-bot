@@ -18,7 +18,8 @@ fi
 # Ensure sqlite3 folder and report directory exist and are writable
 mkdir -p "$SQL_DIR"
 mkdir -p "$REPORT_DIR"
-mkdir -p "$REPORT_DIR"
+chmod -R 777 "$REPORT_DIR" "$SQL_DIR"
+chmod 666 "$LOG_FILE"
 # ensure log file exists
 touch "$LOG_FILE"
 
