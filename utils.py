@@ -1,8 +1,13 @@
+import os
 import urllib.parse
+from dotenv import load_dotenv
 
-# Config tài khoản VietQR
-BANK_CODE = "MB"
-ACCOUNT_NUMBER = "2040108383002"
+# Nạp biến môi trường từ .env (nếu chạy local)
+load_dotenv()
+
+# Config tài khoản VietQR (đọc từ env, có default dự phòng)
+BANK_CODE = os.getenv("BANK_CODE", "MB")
+ACCOUNT_NUMBER = os.getenv("BANK_ACCOUNT", "2040108383002")
 
 def generate_qr(amount, phone, service):
     """
