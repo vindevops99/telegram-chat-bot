@@ -1,28 +1,16 @@
 # bot.py - Fixed & Improved Version
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, CallbackQueryHandler, filters
 import logging
-import os
-from dotenv import load_dotenv
+from config import Config
 from handlers import start, echo, get_inbill_handler, get_expense_handler, get_report_handler
 from db import init_db
-
-# Load environment variables
-load_dotenv()
-
-# Lấy token từ .env (an toàn hơn)
-YOUR_BOT_TOKEN = os.getenv("BOT_TOKEN")
-
-# # Fallback nếu không có .env (KHÔNG KHUYẾN KHÍCH - CHỈ ĐỂ TEST)
-# if not YOUR_BOT_TOKEN:
-#     YOUR_BOT_TOKEN = "8155620991:AAHvVc4k8-iLkISPISgVDY6UeK8NgCIDP0k"
-#     print("⚠️ WARNING: Sử dụng token hardcoded. Vui lòng tạo file .env!")
 
 # Logging với format đầy đủ hơn
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO,
+    level=getattr(logging, Config.LOG_LEVEL.upper(), logging.INFO),
     handlers=[
-        logging.FileHandler("bot.log"),  # Lưu log vào file
+        logging.FileHandler(Config.LOG_FILE),  # Lưu log vào file
         logging.StreamHandler()  # In ra console
     ]
 )
@@ -31,9 +19,9 @@ logger = logging.getLogger(__name__)
 def main():
     """Hàm main khởi động bot"""
     
-    # Kiểm tra token
-    if not YOUR_BOT_TOKEN or YOUR_BOT_TOKEN == "YOUR_TOKEN_HERE":
-        logger.error("❌ Chưa cấu hình BOT_TOKEN! Vui lòng kiểm tra file .env")
+    # Validate cấu hình
+    if not Config.validate():
+        logger.error("❌ Cấu hình không hợp lệ! Vui lòng kiểm tra file .env")
         return
     
     # Khởi tạo application
@@ -44,7 +32,7 @@ def main():
         logger.error(f"❌ Failed to initialize database: {e}")
         return
 
-    app = ApplicationBuilder().token(YOUR_BOT_TOKEN).build()
+    app = ApplicationBuilder().token(Config.BOT_TOKEN).build()
     
     # Handler /start
     app.add_handler(CommandHandler("start", start))

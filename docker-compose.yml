@@ -1,31 +1,63 @@
-version: '3.8'
-
 services:
   telegram-bot:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
     # Image name to be used for the built image. Can be overridden via IMAGE_NAME env var.
     image: "${IMAGE_NAME:-telegram-sales-bot:latest}"
     container_name: telegram-sales-bot
-    restart: always
+    restart: unless-stopped
+    
+    # Load environment variables from .env file
     env_file:
       - .env
+    
+    # Environment variables (can override .env values)
     environment:
-      # These will be read from .env if present; you can override here as well
-      - BOT_TOKEN
-      - BANK_ACCOUNT
-      - BANK_CODE
-      - DB_NAME=/app/sqlite3/sales.db
+      - BOT_TOKEN=${BOT_TOKEN}
+      - BANK_ACCOUNT=${BANK_ACCOUNT:-}
+      - BANK_CODE=${BANK_CODE:-MB}
+      - DB_NAME=${DB_NAME:-/app/sqlite3/sales.db}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - LOG_FILE=${LOG_FILE:-/app/bot.log}
+      - TIMEZONE_OFFSET_HOURS=${TIMEZONE_OFFSET_HOURS:-7}
+    
+    # Persistent volumes for data
     volumes:
-      - report-data:/app/report  # đồng bộ folder report ra host
-      - sqlite3-data:/app/sqlite3      # mount folder to store sqlite DB
-    network_mode: "bridge"
+      - report-data:/app/report      # Báo cáo CSV
+      - sqlite3-data:/app/sqlite3    # SQLite database
+      # Note: Log files are stored in the container, not in a separate volume
+    
+    # Logging configuration
     logging:
-       driver: "json-file"
-       options:
-         max-size: "10m"
-         max-file: "3"
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+        compress: "true"
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    # Resource limits (optional - uncomment if needed)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '0.5'
+    #       memory: 512M
+    #     reservations:
+    #       cpus: '0.25'
+    #       memory: 256M
+
 volumes:
   report-data:
+    driver: local
   sqlite3-data:
+    driver: local
 
 

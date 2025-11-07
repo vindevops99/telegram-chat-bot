@@ -10,21 +10,22 @@ from telegram.ext import (
 )
 from db import get_db
 from utils import generate_qr
+from config import Config
 import csv
 import os
 import logging
 import re
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
+from typing import Optional
 
 # Setup logging
 logger = logging.getLogger(__name__)
 
-# Timezone
-VN_TIMEZONE = timezone(timedelta(hours=7))
 
-def get_vn_time():
+def get_vn_time() -> str:
     """Lấy thời gian hiện tại theo múi giờ Việt Nam"""
-    return datetime.now(VN_TIMEZONE).strftime("%Y-%m-%d %H:%M:%S")
+    vn_timezone = Config.get_timezone_info()
+    return datetime.now(vn_timezone).strftime("%Y-%m-%d %H:%M:%S")
 
 # ===========================
 # States
@@ -39,15 +40,16 @@ EXP_CATEGORY, EXP_AMOUNT, EXP_NOTE, EXP_CONFIRM = range(4)
 # ===========================
 # /start
 # ===========================
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Handler cho lệnh /start"""
-    await update.message.reply_text("👋 Xin chào! Chào mừng bạn đến với hệ thống quản lý.")
-    await send_main_menu(update, context)
+    if update.message:
+        await update.message.reply_text("👋 Xin chào! Chào mừng bạn đến với hệ thống quản lý.")
+        await send_main_menu(update, context)
 
 # ===========================
 # Echo text
 # ===========================
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Echo lại text từ user"""
     if update.message and update.message.text:
         await update.message.reply_text(
@@ -63,7 +65,7 @@ async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # ====================
 # Gửi menu thao tác
 # ====================
-async def send_main_menu(update, context):
+async def send_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Gửi menu chính với 3 lựa chọn"""
     keyboard = [
         [
@@ -260,18 +262,32 @@ async def confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     caption=f"💳 Quét mã QR để thanh toán {data['amount']:,}đ"
                 )
                 
+            except ValueError as e:
+                # BANK_ACCOUNT chưa được cấu hình
+                logger.warning(f"QR code generation skipped: {e}")
+                await query.edit_message_text(
+                    f"✅ *ĐÃ LƯU HÓA ĐƠN THÀNH CÔNG!*\n\n"
+                    f"👤 Khách hàng: `{data['name']}`\n"
+                    f"💇 Dịch vụ: `{data['service']}`\n"
+                    f"💰 Số tiền: `{data['amount']:,}đ`\n"
+                    f"📝 Ghi chú: `{data['note'] or '(Không có)'}`\n\n"
+                    f"⚠️ *Lưu ý*: Mã QR chưa được tạo. Vui lòng cấu hình BANK_ACCOUNT trong file .env",
+                    parse_mode="Markdown"
+                )
             except Exception as e:
-                logger.error(f"Error generating/sending QR: {e}")
+                logger.error(f"Error generating/sending QR: {e}", exc_info=True)
                 await query.message.reply_text(
                     f"⚠️ Không thể tạo mã QR.\n"
-                    f"Vui lòng thu tiền thủ công."
+                    f"Vui lòng thu tiền thủ công.\n\n"
+                    f"Lỗi: {str(e)}"
                 )
                 
         except Exception as e:
-            logger.error(f"Database error: {e}")
+            logger.error(f"Database error when saving bill: {e}", exc_info=True)
             await query.edit_message_text(
                 "❌ *LỖI LƯU DỮ LIỆU!*\n\n"
-                "Vui lòng thử lại sau.",
+                "Vui lòng thử lại sau.\n\n"
+                f"Chi tiết lỗi: {str(e)}",
                 parse_mode="Markdown"
             )
             context.user_data.clear()
@@ -288,9 +304,10 @@ async def confirm_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     return ConversationHandler.END
 
-async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     """Hủy flow hiện tại"""
-    await update.message.reply_text("❌ Đã hủy thao tác.")
+    if update.message:
+        await update.message.reply_text("❌ Đã hủy thao tác.")
     context.user_data.clear()
     await send_main_menu(update, context)
     return ConversationHandler.END
@@ -417,10 +434,11 @@ async def confirm_expense_callback(update: Update, context: ContextTypes.DEFAULT
             )
             
         except Exception as e:
-            logger.error(f"Database error: {e}")
+            logger.error(f"Database error when saving expense: {e}", exc_info=True)
             await query.edit_message_text(
                 "❌ *LỖI LƯU DỮ LIỆU!*\n\n"
-                "Vui lòng thử lại sau.",
+                "Vui lòng thử lại sau.\n\n"
+                f"Chi tiết lỗi: {str(e)}",
                 parse_mode="Markdown"
             )
 
@@ -549,15 +567,17 @@ async def generate_report(update, context, start_date=None, end_date=None, repor
             c = conn.cursor()
             
             # Xác định khoảng thời gian
+            vn_timezone = Config.get_timezone_info()
+            
             if report_type == "current":
-                now = datetime.now(VN_TIMEZONE)
+                now = datetime.now(vn_timezone)
                 year, month = now.year, now.month
                 where_clause = "strftime('%Y', created_at)=? AND strftime('%m', created_at)=?"
                 params = (str(year), f"{month:02d}")
                 period_text = f"tháng {month}/{year}"
                 
             elif report_type == "previous":
-                now = datetime.now(VN_TIMEZONE)
+                now = datetime.now(vn_timezone)
                 if now.month == 1:
                     year, month = now.year - 1, 12
                 else:
@@ -615,7 +635,8 @@ async def generate_report(update, context, start_date=None, end_date=None, repor
         # Tạo CSV nếu có dữ liệu
         if sales_rows or expense_rows:
             os.makedirs("report", exist_ok=True)
-            csv_filename = f"report/report_{datetime.now(VN_TIMEZONE).strftime('%Y%m%d_%H%M%S')}.csv"
+            vn_timezone = Config.get_timezone_info()
+            csv_filename = f"report/report_{datetime.now(vn_timezone).strftime('%Y%m%d_%H%M%S')}.csv"
             
             with open(csv_filename, "w", newline="", encoding="utf-8-sig") as f:
                 writer = csv.writer(f)
@@ -644,8 +665,12 @@ async def generate_report(update, context, start_date=None, end_date=None, repor
                 await message.reply_document(f, caption="📄 File báo cáo chi tiết")
                 
     except Exception as e:
-        logger.error(f"Error generating report: {e}")
-        await message.reply_text("❌ Có lỗi xảy ra khi tạo báo cáo. Vui lòng thử lại sau.")
+        logger.error(f"Error generating report: {e}", exc_info=True)
+        await message.reply_text(
+            f"❌ Có lỗi xảy ra khi tạo báo cáo.\n\n"
+            f"Chi tiết lỗi: {str(e)}\n\n"
+            f"Vui lòng thử lại sau."
+        )
 
 def get_report_handler():
     """Tạo ConversationHandler cho /report"""

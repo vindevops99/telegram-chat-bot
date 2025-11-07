@@ -1,15 +1,14 @@
 # db.py - Database Management Module
-import os
 import sqlite3
 from contextlib import contextmanager
+from typing import Generator, Optional, Dict, Any
 import logging
+from config import Config
 
 logger = logging.getLogger(__name__)
 
-DB_NAME = os.getenv("DB_NAME", "sales.db")
-
 @contextmanager
-def get_db():
+def get_db() -> Generator[sqlite3.Connection, None, None]:
     """
     Context manager để quản lý database connection an toàn
     
@@ -18,7 +17,7 @@ def get_db():
             c = conn.cursor()
             c.execute(...)
     """
-    conn = sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(Config.DB_NAME)
     try:
         yield conn
         conn.commit()
@@ -73,7 +72,7 @@ def init_db():
         
         logger.info("✅ Database initialized successfully")
 
-def get_stats():
+def get_stats() -> Optional[Dict[str, Any]]:
     """Lấy thống kê tổng quan từ database"""
     try:
         with get_db() as conn:
